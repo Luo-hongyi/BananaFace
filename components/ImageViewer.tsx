@@ -46,11 +46,11 @@ const ImageContainer: React.FC<{
     </div>
 );
 
-export const ImageViewer: React.FC<ImageViewerProps> = ({ 
-  generatedImageUrl, 
+export const ImageViewer: React.FC<ImageViewerProps> = ({
+  generatedImageUrl,
   originalImageUrl,
   imageDimensions,
-  isLoading, 
+  isLoading,
   mode,
   lang,
   onCloseImage
@@ -71,11 +71,11 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
   }, [generatedImageUrl]);
 
   const originalAspectRatioStyle = imageDimensions ? { aspectRatio: `${imageDimensions.w} / ${imageDimensions.h}` } : { aspectRatio: '3 / 4' };
-  
-  const generatedAspectRatioStyle = generatedImageDims 
+
+  const generatedAspectRatioStyle = generatedImageDims
     ? { aspectRatio: `${generatedImageDims.w} / ${generatedImageDims.h}` }
     : originalAspectRatioStyle;
-  
+
   const comparatorAspectRatio = imageDimensions ? `${imageDimensions.w} / ${imageDimensions.h}` : '3 / 4';
 
   const showTwoUp = mode === 'image-to-image' && originalImageUrl && generatedImageUrl;
@@ -84,14 +84,14 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
     if (!generatedImageUrl) return;
     const link = document.createElement('a');
     link.href = generatedImageUrl;
-    link.download = `bananaface-portrait-${Date.now()}.png`;
+    link.download = `qwenface-portrait-${Date.now()}.png`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
-  
+
   const CloseButton = () => onCloseImage ? (
-    <button 
+    <button
         onClick={onCloseImage}
         title={labels.close[lang]}
         className="absolute top-3 right-3 p-2 bg-black/50 text-white rounded-full hover:bg-black/70 transition-colors focus:outline-none focus:ring-2 focus:ring-white"
@@ -102,9 +102,9 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
         </svg>
     </button>
   ) : null;
-  
+
   const DownloadButton = () => (
-    <button 
+    <button
         onClick={handleDownload}
         title={labels.download[lang]}
         className="absolute top-3 right-3 p-2 bg-pink-accent/80 text-white rounded-full hover:bg-pink-accent transition-colors focus:outline-none focus:ring-2 focus:ring-white"
@@ -117,7 +117,7 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
   const renderSingleView = () => {
     if (isLoading) {
       return (
-        <div 
+        <div
           className="relative w-full rounded-lg bg-gray-100 dark:bg-gray-900 flex items-center justify-center overflow-hidden mx-auto"
           style={generatedAspectRatioStyle}
         >
@@ -130,7 +130,7 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
     }
     if (generatedImageUrl) {
       return (
-        <div 
+        <div
           className="relative w-full rounded-lg bg-gray-100 dark:bg-gray-900 flex items-center justify-center overflow-hidden mx-auto"
           style={generatedAspectRatioStyle}
         >
@@ -144,7 +144,7 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
     }
     // Fallback for image-to-image before generation
     return (
-       <div 
+       <div
           className="relative w-full rounded-lg bg-gray-100 dark:bg-gray-900 flex items-center justify-center overflow-hidden mx-auto"
           style={originalAspectRatioStyle}
         >
@@ -153,7 +153,7 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
       </div>
     );
   };
-  
+
   if (!showTwoUp) {
     return (
       <div className="w-full h-full flex flex-col items-center justify-center">
@@ -169,7 +169,7 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
         <div className="w-full md:hidden">
             {mobileView === 'slider' ? (
                 <div className="relative">
-                    <ImageComparator 
+                    <ImageComparator
                         originalImage={originalImageUrl!}
                         generatedImage={generatedImageUrl!}
                         aspectRatio={comparatorAspectRatio}

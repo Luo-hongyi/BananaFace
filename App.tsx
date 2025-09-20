@@ -7,7 +7,7 @@ import { ImageUploader } from './components/ImageUploader';
 import { HistoryPanel } from './components/HistoryPanel';
 import { SettingsBar } from './components/SettingsBar';
 import { ModeSelector } from './components/ModeSelector';
-import { generatePortrait, editPortrait } from './services/geminiService';
+import { generatePortrait, editPortrait, getLastSeed } from './services/geminiService';
 import { fileToBase64, addWatermark } from './utils/imageUtils';
 import type { PromptOptions, Lang, Theme, Mode, HistoryItem, UploadedImage } from './types';
 import { CONTROL_GROUPS } from './constants';
@@ -17,13 +17,13 @@ const App: React.FC = () => {
 
   const [lang, setLang] = useState<Lang>('zh');
   const [theme, setTheme] = useState<Theme>(isMobile ? 'light' : 'dark');
-  const [mode, setMode] = useState<Mode>(isMobile ? 'image-to-image' : 'text-to-image');
+  const [mode, setMode] = useState<Mode>('image-to-image');
   const [isHistoryVisible, setIsHistoryVisible] = useState(!isMobile);
-  
+
   const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null);
   const [uploadedImage, setUploadedImage] = useState<UploadedImage | null>(null);
   const [promptOptions, setPromptOptions] = useState<PromptOptions>({});
-  
+
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -72,9 +72,9 @@ const App: React.FC = () => {
         const objectUrl = URL.createObjectURL(file);
         const img = new Image();
         img.onload = () => {
-          setUploadedImage({ 
-            base64, 
-            mimeType, 
+          setUploadedImage({
+            base64,
+            mimeType,
             url: objectUrl,
             width: img.width,
             height: img.height,
@@ -90,7 +90,7 @@ const App: React.FC = () => {
       setUploadedImage(null);
     }
   }, []);
-  
+
   const handleCloseImage = useCallback(() => {
     setUploadedImage(null);
     setGeneratedImageUrl(null);
@@ -134,7 +134,7 @@ const App: React.FC = () => {
                 }
             });
         });
-        
+
         const supplementaryPromptText = promptOptions.supplementary || '';
         const qualityEnhancers = "8k, UHD, hyper-detailed, photorealistic, professional photography, sharp focus, high quality.";
 
@@ -146,7 +146,7 @@ const App: React.FC = () => {
                     return `**${groupName} Changes:**\n${optionsText}`;
                 })
                 .join('\n\n');
-            
+
             if (supplementaryPromptText) {
                 changesList += `${changesList ? '\n\n' : ''}**Additional Instructions:**\n- ${supplementaryPromptText}`;
             }
@@ -154,10 +154,10 @@ const App: React.FC = () => {
             if (!changesList) {
                 return "Slightly enhance the quality and realism of this portrait. CRUCIAL: Preserve the person's identity, likeness, and all existing features with the highest fidelity. Do not make any creative changes. Your response MUST be the edited image ONLY. Do not output any text.";
             }
-      
+
             return `Meticulously edit the provided portrait. CRUCIAL: Preserve the person's fundamental identity, likeness, and facial structure with the highest possible fidelity. Apply ONLY the following changes:\n\n${changesList}\n\nAll other details must remain identical. Your response MUST be the edited image ONLY. Do not output any text.`;
         }
-        
+
         // Text-to-Image Logic
         const subjectParts = [getOptionLabel('age'), getOptionLabel('gender'), getOptionLabel('nationality')].filter(Boolean);
         const subject = subjectParts.length > 0 ? subjectParts.join(' ') : 'a person';
@@ -177,7 +177,7 @@ const App: React.FC = () => {
         if (sceneDetails.length > 0) {
             narrative += `\n\n**Scene & Subject Details:** ${sceneDetails.join('; ')}.`;
         }
-        
+
         if (supplementaryPromptText) {
             narrative += `\n\n**Additional Details:** ${supplementaryPromptText}.`;
         }
@@ -187,13 +187,13 @@ const App: React.FC = () => {
         if (styleDetails.length > 0) {
             narrative += `\n\n**Artistic Style:** ${styleDetails.join('; ')}.`;
         }
-        
+
         const photographyDetails = (selectedOptionsByGroup['Photography'] || [])
             .filter(opt => !opt.startsWith('Pose:'));
         if (photographyDetails.length > 0) {
             narrative += `\n\n**Photography Settings (EXIF Data):**\n- ${photographyDetails.join('\n- ')}.`;
         }
-        
+
         narrative += `\n\n**Final Quality:** ${qualityEnhancers}`;
 
         return narrative.replace(/\s\s+/g, ' ').trim();
@@ -208,16 +208,19 @@ const App: React.FC = () => {
       } else {
         generatedImageBase64 = await generatePortrait(prompt);
       }
-      
+
       const watermarkedImageBase64 = await addWatermark(generatedImageBase64);
       const finalImageUrl = `data:image/png;base64,${watermarkedImageBase64}`;
       setGeneratedImageUrl(finalImageUrl);
 
-      // Add to history
+      // Add to history（记录 seed 但不展示）
+      const seed = typeof getLastSeed === 'function' ? getLastSeed() : null;
+      const optionsWithSeed = seed ? { ...promptOptions, seed: String(seed) } : promptOptions;
+
       const newHistoryItem: HistoryItem = {
         id: Date.now(),
         imageUrl: finalImageUrl,
-        options: promptOptions,
+        options: optionsWithSeed,
         mode,
         originalImageBase64: uploadedImage?.base64,
         originalImageMimeType: uploadedImage?.mimeType,
@@ -232,7 +235,7 @@ const App: React.FC = () => {
       setIsLoading(false);
     }
   };
-  
+
   const handleRestoreHistory = useCallback((item: HistoryItem) => {
     setMode(item.mode);
     setPromptOptions(item.options);
@@ -263,19 +266,19 @@ const App: React.FC = () => {
     <div className="min-h-screen flex flex-col p-4 sm:p-6 lg:p-8">
       <header className="w-full max-w-screen-2xl mx-auto flex flex-nowrap justify-between items-baseline gap-4 mb-6 border-b border-gray-200 dark:border-gray-800 pb-4">
         <Header />
-        <SettingsBar 
-          lang={lang} onLangChange={setLang} 
+        <SettingsBar
+          lang={lang} onLangChange={setLang}
           theme={theme} onThemeChange={setTheme}
           isHistoryVisible={isHistoryVisible} onHistoryToggle={() => setIsHistoryVisible(v => !v)}
         />
       </header>
       <main className={`w-full max-w-screen-2xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 flex-grow`}>
-        
+
         {/* Middle Column: Viewer/Uploader */}
         <div className={`w-full flex-grow flex flex-col bg-white dark:bg-black rounded-xl p-4 sm:p-6 lg:order-2 ${isHistoryVisible ? 'lg:col-span-6' : 'lg:col-span-9'}`}>
           <div className="text-center mb-6 flex-shrink-0">
             <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-5xl font-extralight tracking-wide text-gray-700 dark:text-gray-300 whitespace-nowrap">
-              Your Pocket Stylist｜你的随身造型师
+              Your Pocket Stylist｜随身造型师
             </h2>
           </div>
           <div className="flex-grow min-h-0">
@@ -300,11 +303,11 @@ const App: React.FC = () => {
           <div className="order-1 lg:order-1">
              <ModeSelector mode={mode} onModeChange={handleModeChange} lang={lang} />
           </div>
-          
+
           <div className="order-3 lg:order-2 mt-4 flex-grow">
-            <ControlPanel 
-              options={promptOptions} 
-              onOptionsChange={handleOptionsChange} 
+            <ControlPanel
+              options={promptOptions}
+              onOptionsChange={handleOptionsChange}
               onClearOptions={handleClearOptions}
               onLuckyChoice={handleLuckyChoice}
               lang={lang}
@@ -318,8 +321,8 @@ const App: React.FC = () => {
               disabled={isLoading || !canGenerate}
               className="w-full mt-4 lg:mt-6 bg-pink-accent hover:bg-pink-accent/90 text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200 disabled:bg-gray-300 dark:disabled:bg-gray-700 disabled:cursor-not-allowed flex items-center justify-center"
             >
-              {isLoading 
-                ? (lang === 'en' ? 'Generating...' : '生成中...') 
+              {isLoading
+                ? (lang === 'en' ? 'Generating...' : '生成中...')
                 : `✨ ${lang === 'en' ? 'Generate' : '生成'}`
               }
             </button>

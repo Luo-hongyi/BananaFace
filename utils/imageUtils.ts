@@ -8,7 +8,7 @@ export const fileToBase64 = (file: File): Promise<{ base64: string; mimeType: st
       const result = reader.result as string;
       const [header, data] = result.split(',');
       const mimeType = header?.split(';')[0]?.split(':')[1];
-      
+
       if (data && mimeType) {
         resolve({ base64: data, mimeType });
       } else {
@@ -35,8 +35,8 @@ export const addWatermark = (base64Image: string): Promise<string> => {
       // Draw the original image
       ctx.drawImage(img, 0, 0);
 
-      // Watermark settings
-      const watermarkText = 'BananaFace｜ZHO';
+      // Watermark settings (强制使用你指定的文案)
+      const watermarkText = '';
       const padding = img.width * 0.02; // 2% padding from the edge
       const fontSize = Math.max(12, Math.round(img.width / 50)); // Responsive font size, min 12px
 
@@ -51,7 +51,7 @@ export const addWatermark = (base64Image: string): Promise<string> => {
       // Get the new base64 string, extracting just the data part
       const dataUrl = canvas.toDataURL('image/png');
       const [, base64Data] = dataUrl.split(',');
-      
+
       if (base64Data) {
         resolve(base64Data);
       } else {

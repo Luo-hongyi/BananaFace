@@ -1,5 +1,4 @@
 
-import { GoogleGenAI, Modality } from "@google/genai";
 import { fetchImageAsPngBase64, pickNearestQwenSizeByRatio } from "../utils/imageFetch";
 
 // Provider 选择：默认 google，可通过环境变量切换到 qwen
@@ -7,9 +6,19 @@ const PROVIDER = (process.env.IMAGE_PROVIDER || 'google').toLowerCase();
 
 let lastSeed: string | null = null;
 
-// Google SDK（保留回退）
-const apiKey = process.env.API_KEY as string;
-const ai = new GoogleGenAI({ apiKey });
+// Google SDK（保留回退，按需惰性初始化，避免在使用 Qwen 时因缺少 Key 报错）
+let googleAIInstance: any | null = null;
+async function getGoogleAI(): Promise<any> {
+    if (googleAIInstance) return googleAIInstance;
+    const apiKey = process.env.API_KEY as string | undefined;
+    if (!apiKey) {
+        throw new Error('Missing GEMINI_API_KEY. Set it in .env.local or switch IMAGE_PROVIDER=qwen.');
+    }
+    const mod = await import('@google/genai');
+    const { GoogleGenAI } = mod as any;
+    googleAIInstance = new GoogleGenAI({ apiKey });
+    return googleAIInstance;
+}
 
 const handleError = (error: unknown, context: string): never => {
     console.error(`Error in ${context}:`, error);
@@ -149,6 +158,7 @@ export const generatePortrait = async (prompt: string): Promise<string> => {
         try { return await qwenGenerate(prompt); } catch (e) { handleError(e, 'qwen.generate'); }
     }
     try {
+        const ai = await getGoogleAI();
         const response = await ai.models.generateImages({
             model: 'imagen-4.0-generate-001',
             prompt: prompt,
@@ -173,6 +183,8 @@ export const editPortrait = async (base64ImageData: string, mimeType: string, pr
         try { return await qwenEdit(base64ImageData, mimeType, prompt); } catch (e) { handleError(e, 'qwen.edit'); }
     }
     try {
+        const ai = await getGoogleAI();
+        const { Modality } = await import('@google/genai');
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash-image-preview',
             contents: {
